@@ -1,0 +1,57 @@
+FROM alpine:3.19
+
+# Install packages needed in the Firecracker guest
+RUN apk add --no-cache \
+    openssh-server \
+    bash \
+    jq \
+    crun \
+    curl \
+    tar \
+    openrc \
+    e2fsprogs \
+    util-linux
+
+# Configure OpenRC for VM use (not Docker container)
+RUN mkdir -p /run/openrc && touch /run/openrc/softlevel
+# Override OpenRC's Docker auto-detection so networking and other services start
+RUN echo 'rc_sys=""' >> /etc/rc.conf
+
+# Enable serial console on ttyS0 for Firecracker
+RUN sed -i 's|^#ttyS0.*|ttyS0::respawn:/sbin/getty -L ttyS0 115200 vt100|' /etc/inittab || true
+
+# Configure networking: static IP 172.16.0.2/24
+RUN mkdir -p /etc/network
+RUN printf 'auto lo\niface lo inet loopback\n\nauto eth0\niface eth0 inet static\n    address 172.16.0.2\n    netmask 255.255.255.0\n    gateway 172.16.0.1\n' > /etc/network/interfaces
+
+# DNS - resolv.conf is managed by Docker during build, written post-export in build.sh
+
+# Configure sshd
+RUN ssh-keygen -A
+RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
+RUN sed -i 's/^#PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+RUN sed -i 's/^#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+RUN sed -i 's/^#PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+
+# Add cgroup2 mount at boot (needed for crun)
+RUN echo 'cgroup2 /sys/fs/cgroup cgroup2 defaults 0 0' >> /etc/fstab
+
+# Enable services at boot
+RUN rc-update add sshd default
+RUN rc-update add networking boot
+RUN rc-update add devfs sysinit
+RUN rc-update add dmesg sysinit
+RUN rc-update add hwclock boot || true
+RUN rc-update add modules boot || true
+RUN rc-update add sysctl boot || true
+RUN rc-update add hostname boot || true
+RUN rc-update add bootmisc boot || true
+
+# Set hostname
+RUN echo "redgreen" > /etc/hostname
+
+# Create directories for OCI container images
+RUN mkdir -p /var/lib/oci /var/run/oci
+
+# Set root password (disabled - pubkey only)
+RUN echo 'root:*' | chpasswd -e

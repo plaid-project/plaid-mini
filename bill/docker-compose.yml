@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  builder:
+    image: vpanel-yocto-zeus-builder:latest
+    volumes:
+      - yocto-downloads:/yocto/downloads
+      - yocto-sstate:/yocto/sstate-cache
+      - ./conf:/build/conf
+      - ./build-output:/build/build-output
+      - ./build-inner.sh:/build/build-inner.sh
+    working_dir: /build
+    command: bash -c "/build/build-inner.sh"
+
+volumes:
+  yocto-downloads:
+    external: true
+    name: vpanel-base-x86_yocto-downloads
+  yocto-sstate:
+    external: true
+    name: vpanel-base-x86_yocto-sstate
