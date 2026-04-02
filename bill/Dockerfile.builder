@@ -15,6 +15,14 @@ RUN locale-gen en_US.UTF-8
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 
+# Install Google Cloud SDK for gsutil (sstate cache sync to GCS)
+RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
+        > /etc/apt/sources.list.d/google-cloud-sdk.list \
+    && curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+        | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - \
+    && apt-get update && apt-get install -y google-cloud-sdk \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd -g 1000 builder \
     && useradd -u 1000 -g 1000 -m -s /bin/bash builder
 

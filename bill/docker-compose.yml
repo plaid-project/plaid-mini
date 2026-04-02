@@ -9,6 +9,9 @@ services:
       - ./conf:/build/conf
       - ./build-output:/build/build-output
       - ./build-inner.sh:/build/build-inner.sh
+      - ${HOME}/.config/gcloud:/home/builder/.config/gcloud:ro
+    environment:
+      - SSTATE_GCS_BUCKET=${SSTATE_GCS_BUCKET:-}
     working_dir: /build
     command: bash -c "/build/build-inner.sh"
 
