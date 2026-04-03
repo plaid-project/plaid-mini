@@ -69,24 +69,20 @@ status:
 		echo "SSH: not reachable"; \
 	fi
 
+BILL_TARBALL ?= sources/meta-bill/build-output/bill-image-bill-x86-64.tar.bz2
+
 load-bill:
-	@echo "==> Loading Bill OCI image into guest..."
-	docker save vpanel-bill:latest | ssh $(SSH_OPTS) root@$(GUEST_IP) \
-		'cat > /tmp/bill.tar'
-	@echo "==> Creating OCI bundle from Docker image..."
-	ssh $(SSH_OPTS) root@$(GUEST_IP) 'set -e; \
-		rm -rf /var/lib/oci/bill; \
-		mkdir -p /var/lib/oci/bill/rootfs; \
-		cd /tmp && tar xf bill.tar; \
-		LAYER=$$(jq -r ".[0].Layers[0]" /tmp/manifest.json); \
-		tar xf "/tmp/$$LAYER" -C /var/lib/oci/bill/rootfs; \
-		rm -rf /tmp/blobs /tmp/manifest.json /tmp/index.json /tmp/oci-layout /tmp/repositories /tmp/bill.tar'
+	@echo "==> Preparing OCI bundle on guest..."
+	ssh $(SSH_OPTS) root@$(GUEST_IP) \
+		'crun delete -f bill 2>/dev/null || true; rm -rf /var/lib/oci/bill; mkdir -p /var/lib/oci/bill/rootfs'
+	@echo "==> Streaming $(BILL_TARBALL) to guest..."
+	cat $(BILL_TARBALL) | ssh $(SSH_OPTS) root@$(GUEST_IP) 'bzcat | tar xf - -C /var/lib/oci/bill/rootfs'
 	@echo "==> Writing OCI config..."
 	ssh $(SSH_OPTS) root@$(GUEST_IP) \
 		'printf "%s\n" '"'"'{"ociVersion":"1.0.0","process":{"terminal":false,"user":{"uid":0,"gid":0},"args":["/bin/sh","-c","sleep infinity"],"env":["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","HOME=/root","TERM=xterm"],"cwd":"/"},"root":{"path":"rootfs","readonly":false},"mounts":[{"destination":"/proc","type":"proc","source":"proc"},{"destination":"/dev","type":"tmpfs","source":"tmpfs","options":["nosuid","strictatime","mode=755","size=65536k"]},{"destination":"/dev/pts","type":"devpts","source":"devpts","options":["nosuid","noexec","newinstance","ptmxmode=0666","mode=0620"]},{"destination":"/sys","type":"sysfs","source":"sysfs","options":["nosuid","noexec","nodev","ro"]},{"destination":"/tmp","type":"tmpfs","source":"tmpfs","options":["nosuid","nodev"]}],"linux":{"namespaces":[{"type":"pid"},{"type":"mount"}]}}'"'"' > /var/lib/oci/bill/config.json'
 	@echo "==> Starting Bill container..."
 	ssh $(SSH_OPTS) root@$(GUEST_IP) \
-		'crun delete -f bill 2>/dev/null || true; cd /var/lib/oci/bill && crun run -d bill </dev/null >/dev/null 2>&1'
+		'cd /var/lib/oci/bill && crun run -d bill </dev/null >/dev/null 2>&1'
 	@echo "==> Bill is running."
 
 shell:

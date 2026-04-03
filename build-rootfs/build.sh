@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 ROOTFS_IMG="$PROJECT_DIR/assets/alpine-rootfs.ext4"
 KEYS_DIR="$PROJECT_DIR/keys"
-ROOTFS_SIZE_MB=512
+ROOTFS_SIZE_MB=2048
 MOUNT_DIR="/tmp/alpine-rootfs-mount"
 
 echo "==> Building Alpine rootfs for Firecracker guest (Red Green)..."

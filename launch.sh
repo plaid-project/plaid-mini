@@ -78,7 +78,7 @@ curl -s --unix-socket "$SOCKET_PATH" -X PUT "http://localhost/machine-config" \
     -H "Content-Type: application/json" \
     -d '{
         "vcpu_count": 2,
-        "mem_size_mib": 512
+        "mem_size_mib": 2048
     }'
 
 # Start the VM
